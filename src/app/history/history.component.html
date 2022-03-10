@@ -1,0 +1,23 @@
+<p *ngIf="(state$ | async)!.length == 0">No hay trazas registradas</p>
+<mat-accordion>
+
+  <ng-container *ngFor="let history of (state$ | async)">
+   
+    <mat-expansion-panel hideToggle>
+      <mat-expansion-panel-header [ngClass]="{'error':history.status !== 200 }">
+        <mat-panel-title >
+          {{history.status}}
+        </mat-panel-title>
+        <mat-panel-description>
+          {{history.url}}
+        </mat-panel-description>
+      </mat-expansion-panel-header>
+      
+      <h4>Response</h4>
+      <div>
+        <app-json2html *ngIf="history.response" [objectToFormat]="history.response | prepareResponse"></app-json2html>
+      </div>
+    
+    </mat-expansion-panel>
+</ng-container>
+</mat-accordion>

@@ -1,0 +1,82 @@
+app-eid-component {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.right-side {
+  position: absolute;
+  right: 0;
+  z-index: 9999;
+  width: 33%;
+  top: 0;
+  height: 100%;
+  padding: 16px;
+  background-color: #f8f8f8;
+  transform: translateX(calc(100% - 16px));
+  transition: transform 0.3s cubic-bezier(0.39, 0.575, 0.565, 1);
+  &.show {
+    transform: translateX(0%);
+  }
+  #close {
+    cursor: pointer;
+    top: 0;
+    position: absolute;
+    left: -50px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f8f8f8;
+  }
+}
+::ng-deep .mat-tab-body {
+  padding: 16px;
+  max-height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px);
+  height: calc(100vh - 120px);
+  overflow-y: auto !important;
+}
+::ng-deep.mat-tab-label,
+::ng-deep.mat-tab-label-active {
+  min-width: 0 !important;
+  padding: 16px !important;
+  margin: 3px !important;
+}
+::ng-deep.mat-tab-labels {
+  justify-content: space-between;
+}
+::ng-deep.mat-drawer {
+  overflow-y: scroll;
+}
+
+@media only screen and (max-width: 768px) {
+  /* For mobile phones: */
+
+  .right-side {
+    width: 88%;
+    padding: 0px;
+    transform: translateX(calc(0%));
+    &.show {
+      transform: translateX(100%);
+    }
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .setting-icons-desktop{
+    display: none;
+  }
+  .setting-icons-mobile{
+    display: inline-block;
+  }
+}
+@media screen and (min-width: 768px) {
+  .setting-icons-desktop{
+    display: inline-block;
+  }
+  .setting-icons-mobile{
+    display: none;
+  }
+}

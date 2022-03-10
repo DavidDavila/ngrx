@@ -1,0 +1,178 @@
+# This is a GitLab CI configuration to build the project as a docker image
+# It will:
+# build a docker image for each git commit, tagging the docker image with the commit SHA
+# tag the docker image “latest” for the “master” branch
+# keep in sync git tags with docker tags
+default:
+  image:                   docker:19.03.1
+
+services:
+  - docker:19.03.1-dind
+stages:
+  - package
+  - deploy-dev  
+  - deploy-staging
+  - notify
+  - build-prod
+  - deploy-prod
+  - notify-prod
+
+variables:
+  # Disable TLS https://docs.gitlab.com/ee/ci/docker/using_docker_build.html
+  DOCKER_HOST:             tcp://localhost:2375
+  DOCKER_TLS_CERTDIR:      ""
+  CONTAINER_IMAGE:         container.electronicid.eu/eid-app/sdk-tester-js
+  APP_NAME:                sdk-tester-js
+  TRIGGER_CONTAINER_IMAGE: container.electronicid.eu\/eid-app\/sdk-tester-js
+  AWS_DEFAULT_REGION:      eu-west-1 # The region of our S3 bucket
+  BUCKET_NAME:             sdk-tester-js.electronicid.eu         # Your bucket name
+
+docker-build-dev:
+  stage:                   package
+  before_script:
+    - docker login $NEXUS_REGISTRY_HOST -u $NEXUS_REGISTRY_USER -p $NEXUS_REGISTRY_PASSWORD
+  after_script:
+    - docker logout $NEXUS_REGISTRY_HOST
+  script:
+    # fetches the latest image (not failing if image is not found)
+    - docker pull $CONTAINER_IMAGE:edge || true
+    - >
+      docker build
+      --pull
+      --build-arg VCS_REF=$CI_COMMIT_SHA
+      --build-arg VCS_URL=$CI_PROJECT_URL
+      --cache-from $CONTAINER_IMAGE:edge
+      --tag $CONTAINER_IMAGE:$CI_COMMIT_SHORT_SHA
+      .
+    - docker tag $CONTAINER_IMAGE:$CI_COMMIT_SHORT_SHA $CONTAINER_IMAGE:edge
+    - docker push $CONTAINER_IMAGE
+  retry:                   1
+  only:
+    - dev
+    
+docker-build:
+  stage:                   package
+  before_script:
+    - docker login $NEXUS_REGISTRY_HOST -u $NEXUS_REGISTRY_USER -p $NEXUS_REGISTRY_PASSWORD
+  after_script:
+    - docker logout $NEXUS_REGISTRY_HOST
+  script:
+    # fetches the latest image (not failing if image is not found)
+    - docker pull $CONTAINER_IMAGE:latest || true
+    # builds the project, passing proxy variables, and vcs vars for LABEL
+    # notice the cache-from, which is going to use the image we just pulled locally
+    # the built image is tagged locally with the commit SHA, and then pushed to
+    # the GitLab registry
+    - >
+      docker build
+      --pull
+      --build-arg VCS_REF=$CI_COMMIT_SHA
+      --build-arg VCS_URL=$CI_PROJECT_URL
+      --cache-from $CONTAINER_IMAGE:latest
+      --tag $CONTAINER_IMAGE:$CI_COMMIT_TAG
+      .
+    - docker tag $CONTAINER_IMAGE:$CI_COMMIT_TAG $CONTAINER_IMAGE:latest
+    - docker push $CONTAINER_IMAGE
+  only:
+    - tags
+
+notify-dev:
+  stage:                   notify
+  image:                   byrnedo/alpine-curl
+  variables:
+    GIT_STRATEGY:          none
+    WEBHOOK_CONTENT:       'Content-Type: application/json'
+    WEBHOOK_MESSAGE:       "Nueva imagen Docker disponible en Nexus: $APP_NAME:$CI_COMMIT_SHORT_SHA subida por el usuario $GITLAB_USER_NAME"
+  script:
+    - curl -H "${WEBHOOK_CONTENT}" -d "{"text":\"$WEBHOOK_MESSAGE\"}" "${WEBHOOK_TEAMS_URL}"
+  retry:                   1
+  only:
+    - dev
+
+notify-dev-failure:
+  stage:                   notify
+  image:                   byrnedo/alpine-curl
+  variables:
+    GIT_STRATEGY:          none
+    WEBHOOK_CONTENT:       'Content-Type: application/json'
+    WEBHOOK_MESSAGE:       "La pipeline $APP_NAME:$CI_COMMIT_SHORT_SHA subida por el usuario $GITLAB_USER_NAME ha fallado. Por favor, compruebalo en gitlab.electronicid.eu"
+  script:
+    - curl -H "${WEBHOOK_CONTENT}" -d "{"text":\"$WEBHOOK_MESSAGE\"}" "${WEBHOOK_TEAMS_URL_FAIL}"
+  when:                    on_failure
+  retry:                   1
+  only:
+    - dev
+
+notify-docker:
+  stage:                   notify
+  image:                   byrnedo/alpine-curl
+  variables:
+    GIT_STRATEGY:          none
+    WEBHOOK_CONTENT:       'Content-Type: application/json'
+    WEBHOOK_MESSAGE:       "New Docker image available in Nexus: $APP_NAME:$CI_COMMIT_TAG. Uploaded by user $GITLAB_USER_NAME. IMPORTANT: Manual action required to deploy in all the environments"
+  script:
+    - curl -H "${WEBHOOK_CONTENT}" -d "{"text":\"$WEBHOOK_MESSAGE\"}" "${WEBHOOK_TEAMS_URL}"
+  only:
+    # Only "master" should be tagged "latest"
+    - tags
+
+notify-failure:
+  stage:                   notify
+  image:                   byrnedo/alpine-curl
+  variables:
+    GIT_STRATEGY:          none
+    WEBHOOK_CONTENT:       'Content-Type: application/json'
+    WEBHOOK_MESSAGE:       "The pipeline $APP_NAME:$CI_COMMIT_TAG uploaded by user $GITLAB_USER_NAME has failed. Please check in gitlab.electronicid.eu"
+  script:
+    - curl -H "${WEBHOOK_CONTENT}" -d "{"text":\"$WEBHOOK_MESSAGE\"}" "${WEBHOOK_TEAMS_URL_FAIL}"
+  when:                    on_failure
+  only:
+    # Only "master" should be tagged "latest"
+    - tags
+
+trigger_deploy_dev:
+  stage:                   deploy-dev
+  environment:             dev
+  image:                   byrnedo/alpine-curl
+  variables:
+    IMAGE_TAG:             $CI_COMMIT_SHORT_SHA
+    ACTION:                "upgrade"
+    REF_NAME:              dev
+  script:
+    - "curl -X POST -F token=$TRIGGER_DEPLOY_TOKEN -F ref=$REF_NAME -F variables[ACTION]=$ACTION -F variables[APP_NAME]=$APP_NAME -F variables[IMAGE_TAG]=$IMAGE_TAG -F variables[TRIGGER_CONTAINER_IMAGE]=$TRIGGER_CONTAINER_IMAGE:$IMAGE_TAG $TRIGGER_URL"
+  retry:                   1
+  only:
+    - dev
+
+# Trigger to upgrade the helm charts. The key is the env vars APP_NAME and IMAGE_TAG
+trigger_deploy_staging:
+  stage:                   deploy-staging
+  environment:             staging
+  image:                   byrnedo/alpine-curl
+  variables:
+    IMAGE_TAG:             $CI_COMMIT_TAG
+    ACTION:                "upgrade"
+    REF_NAME:              staging
+  when:                    manual
+  allow_failure:           true
+  script:
+    - "curl -X POST -F token=$TRIGGER_DEPLOY_TOKEN -F ref=$REF_NAME -F variables[ACTION]=$ACTION -F variables[APP_NAME]=$APP_NAME -F variables[IMAGE_TAG]=$IMAGE_TAG -F variables[TRIGGER_CONTAINER_IMAGE]=$TRIGGER_CONTAINER_IMAGE:$IMAGE_TAG $TRIGGER_URL"
+  retry:                   1
+  only:
+    - tags
+
+trigger_deploy_prod:
+  stage:                            deploy-prod
+  environment:                      prod
+  image:                            byrnedo/alpine-curl
+  variables:
+    IMAGE_TAG:                      $CI_COMMIT_TAG
+    ACTION:                         "upgrade"
+  when:                             manual
+  allow_failure:                    true
+  script:
+    - "curl -X POST -F token=$TRIGGER_DEPLOY_TOKEN -F ref=master -F variables[ACTION]=$ACTION -F variables[APP_NAME]=$APP_NAME -F variables[IMAGE_TAG]=$IMAGE_TAG -F variables[TRIGGER_CONTAINER_IMAGE]=$TRIGGER_CONTAINER_IMAGE:$IMAGE_TAG $TRIGGER_URL"
+  retry:                            1
+  only:
+    - tags
+

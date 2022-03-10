@@ -1,0 +1,14 @@
+::ng-deep {
+  .mat-expansion-panel-header-title {
+    align-items: center;
+  }
+  .mat-expansion-panel-header {
+    &.error {
+      border-left: 4px solid rgba(191, 74, 3, 0.49);
+      .mat-expansion-panel-header-title {
+        color: rgba(191, 74, 3, 0.49);
+        font-weight: bold;
+      }
+    }
+  }
+}

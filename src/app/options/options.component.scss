@@ -1,0 +1,21 @@
+article {
+  display: flex;
+  mat-form-field {
+    flex: 1;
+    margin: 8px;
+
+    &.env {
+      flex: 0;
+      width: 120px;
+    }
+  }
+}
+::ng-deep {
+  .mat-option-text,
+  .mat-select-min-line {
+    text-transform: capitalize;
+  }
+}
+section {
+  margin-bottom: 16px;
+}

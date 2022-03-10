@@ -1,0 +1,36 @@
+<section>
+
+<header>
+    <mat-form-field >
+    <mat-label>Width</mat-label>
+    <input type="number" [(ngModel)]="width" matInput [disabled]="!showButton">
+    <span matSuffix>px</span>
+  </mat-form-field>
+
+    <mat-form-field >
+    <mat-label>Height</mat-label>
+    <input type="number" [(ngModel)]="height" matInput  [disabled]="!showButton">
+    <span matSuffix>px</span>
+  </mat-form-field>
+
+  <button  mat-raised-button color="primary" (click)="destroy()" *ngIf="component?.init">Destroy</button>
+
+</header>
+
+<article [ngStyle]="{width: width+'px', height: height+'px'}"  (contextmenu)="onContextMenu($event, this)">
+  <button  mat-raised-button color="primary" (click)="start()" *ngIf="showButton">Start</button>
+  <div id="video" #video></div>
+  
+  <div style="visibility: hidden; position: fixed"
+    [style.left]="contextMenuPosition.x"
+    [style.top]="contextMenuPosition.y"
+    [matMenuTriggerFor]="contextMenu">
+</div>
+  <mat-menu #contextMenu="matMenu">
+    <ng-template matMenuContent let-item="item">
+      <button mat-menu-item (click)="onContextMenuAction1($event, this)">Customize element</button>
+    
+    </ng-template>
+  </mat-menu>
+</article>
+</section>

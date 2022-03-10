@@ -1,0 +1,80 @@
+<section class="sdk" ngif="(stateOptions$ | async)">
+  <h2>Form</h2>
+  
+  <article> 
+    <mat-form-field appearance="fill" class="env">
+    <mat-label>Environment</mat-label>
+    <mat-select [(ngModel)]="selectEidApi" (selectionChange)="selectEnv()">
+      <ng-container *ngFor="let env of envs">
+      <mat-option [value]="env">{{env}}</mat-option>
+      </ng-container>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field >
+    <input matInput (change)="changeOptions({eidApi:($event.target)!.value})" [disabled]="selectEidApi != 'custom'" [value]="(stateOptions$ | async)!.eidApi" placeholder="Endpoint">
+  </mat-form-field></article>
+  <article>
+    <mat-form-field>
+      <input matInput (change)="changeOptions({bearerToken:($event.target)!.value}); " [value]="(stateOptions$ | async)!.bearerToken" placeholder="Bearer">
+    </mat-form-field>
+  </article>
+  <article>
+    <mat-form-field>
+      <input matInput (change)="changeOptions({rauthorityId:($event.target)!.value});" [value]="(stateOptions$ | async)!.rauthorityId" placeholder="rauthorityId">
+    </mat-form-field>
+  </article>
+  <article>
+   
+
+      <mat-form-field>
+        <input matInput (change)="changeOptions({idType:($event.target)!.value})" [value]="(stateOptions$ | async)!.idType" placeholder="Doc Id">
+      </mat-form-field>
+
+      <mat-form-field>
+        <input matInput (change)="stringToArray(($event.target)!.value)" [value]="(stateOptions$ | async)!.allowedIdTypes" placeholder="Doc Ids">
+      </mat-form-field>
+   
+      
+    
+
+  </article>
+  <article>
+
+    <mat-form-field>
+      <input matInput (change)="changeOptions({phone:($event.target)!.value})" [value]="(stateOptions$ | async)!.phone" placeholder="Phone">
+    </mat-form-field>
+    
+    <mat-form-field class="env">
+      <input matInput (change)="changeOptions({lang:($event.target)!.value})" [value]="(stateOptions$ | async)!.lang" placeholder="Language">
+    </mat-form-field>
+  </article>
+
+  <article>
+    <mat-form-field>
+      <input matInput (change)="changeOptions({externalReference:($event.target)!.value}); " [value]="(stateOptions$ | async)!.externalReference" placeholder="External Reference">
+    </mat-form-field>
+  </article>
+
+</section>
+<section>
+  <h2>
+    <span> Request params </span>
+    <p class="small">Reuse auth: <mat-checkbox (change)="changeOptions({'reUseAuth':$event.checked})" [checked]="(stateOptions$ | async)!.reUseAuth"></mat-checkbox></p>
+
+  </h2>
+  
+  <h3>{{(stateOptions$ | async)?.eidApi + component.requestPath}}</h3>
+  <app-json2html [objectToFormat]="(stateOptions$ | async) |   prepareParams:'request'"></app-json2html>
+</section>
+<section>
+  <h2>Init params</h2>
+  <app-json2html [objectToFormat]="(stateOptions$ | async) |   prepareParams:'init':component.name"></app-json2html>
+</section>
+<section>
+  <h2>
+   
+    <span> Start params</span>
+    <p class="small">Playsinline: <mat-checkbox (change)="changeOptions({'playsinline':$event.checked})" [checked]="(stateOptions$ | async)!.playsinline"></mat-checkbox></p>
+  </h2>
+  <app-json2html [objectToFormat]="(stateOptions$ | async) |   prepareParams:'start':component.name"></app-json2html>
+</section>

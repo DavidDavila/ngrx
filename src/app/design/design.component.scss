@@ -1,0 +1,12 @@
+textarea {
+  width: calc(100% - 16px);
+}
+footer {
+  display: flex;
+  justify-content: space-between;
+}
+.export {
+  position: fixed;
+  bottom: 66px;
+  right: 16px;
+}
